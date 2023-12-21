@@ -1,9 +1,10 @@
 const WebSocket = require('ws');
+const fs = require('fs');
 
 class WSService {
     users;
     ws;
-    bott;
+    bot;
 
     constructor(bot) {
         this.users = [];
@@ -17,35 +18,41 @@ class WSService {
         })
         this.ws.on('message', (msg) => {
             const data = JSON.parse(msg);
+            console.log(data.x.hash);
             this.users.forEach((user) => {
-                const index = user.addr.find(addr => addr === data.inputs[0].addr);
+                const index = user.addresses.find(addr => addr === data.x.inputs[0].addr);
                 if (index) {
-                    this.bot.send()
+                    this.bot.send(msg.chat.id, data)
                 }
             })
         })
     }
 
-    async listenAddresses(addresses, userID) {
+    async listenAddresses(addresses, userID, bot) {
         const user = this.users.find(user => user.id === userID);
         if (!user) {
             this.users.push({
                 id: userID,
-                addr: [...addresses]
+                addresses: [...addresses]
             })
+            addresses.forEach(addr => {
+                this.ws.send(JSON.stringify({
+                    op: "unconfirmed_sub",
+                    //addr: addr
+                }))
+            });
         } else {
             const index = this.users.findIndex(user => user.id === userID);
             this.users[index].addresses = this.users[index].addresses.concat(addresses);
+            addresses.forEach(addr => {
+                this.ws.send(JSON.stringify({
+                    op: "unconfirmed_sub",
+                    //addr: addr
+                }))
+            });
         }
-
-        addresses.forEach(addr => {
-            this.ws.send(JSON.stringify({
-                op: "addr_sub",
-                addr: addr
-            }))
-        });
     }
 
 }
 
-module.exports = new WSService();
+module.exports = WSService;
